@@ -170,3 +170,9 @@ Sync Confluence 插件样式
     font-size: var(--font-ui-small);
     margin-top: 4px;
 }
+
+.sync-confluence-http-warning {
+    color: var(--text-warning);
+    font-size: var(--font-ui-small);
+    margin-top: 4px;
+}
