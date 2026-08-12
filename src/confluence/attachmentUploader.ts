@@ -70,6 +70,16 @@ export class AttachmentUploader {
 			seen.add(filename);
 
 			try {
+				const statSize = ref.tfile.stat?.size;
+				if (shouldSkipBeforeRead(statSize, this.opts.maxSizeBytes)) {
+					this.logger.warn(
+						`跳过过大附件: ${filename}`,
+						`${(statSize / 1024 / 1024).toFixed(2)} MB > ${(this.opts.maxSizeBytes / 1024 / 1024).toFixed(2)} MB`,
+					);
+					result.skipped += 1;
+					continue;
+				}
+
 				const bytes = await this.app.vault.readBinary(ref.tfile);
 				if (bytes.byteLength > this.opts.maxSizeBytes) {
 					this.logger.warn(
@@ -157,6 +167,15 @@ function guessMime(filename: string): string {
 	if (idx < 0) return 'application/octet-stream';
 	const ext = filename.slice(idx + 1).toLowerCase();
 	return MIME[ext] ?? 'application/octet-stream';
+}
+
+/**
+ * True when vault metadata already proves the file is over the limit, so
+ * `readBinary` must not run. Non-finite / missing stats fall through to the
+ * post-read byteLength check.
+ */
+export function shouldSkipBeforeRead(statSize: number | undefined, maxSizeBytes: number): statSize is number {
+	return typeof statSize === 'number' && Number.isFinite(statSize) && statSize > maxSizeBytes;
 }
 
 /** 辅助:Obsidian metadataCache 解析 link → TFile,失败 fallback 到全 vault filename 搜索 */
