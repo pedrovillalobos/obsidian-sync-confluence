@@ -3,6 +3,7 @@ import MarkdownIt from 'markdown-it';
 import { AttachmentRef } from '../types';
 import { sha1Hex } from '../utils/hash';
 import { resolveAttachmentFile } from './attachmentUploader';
+import { replaceMarkdownTocCallouts, replaceTocMarkersWithMacros } from './tocConverter';
 
 export interface DiagramBlock {
 	/** 源码 sha1 hex,作为缓存键与 filename 前缀 */
@@ -315,7 +316,9 @@ function stripFrontmatter(md: string): string {
 function preprocessObsidianSyntax(md: string, opts?: PreprocessOptions): string {
 	// 先把代码区(fenced + inline)替换成占位符,避免代码示例里的 ![[...]] / [[...]] 被改写
 	const { masked, restore } = maskCodeRegions(md);
-	let s = masked;
+	// `[!summary]+ 目录` 在 Obsidian 里继续显示手写目录,同步时改用 Confluence
+	// 官方 TOC 宏。必须在代码区屏蔽后执行,避免转换文档中的语法示例。
+	let s = replaceMarkdownTocCallouts(masked);
 
 	// 0. @[[Name]] / @[[Name|alias]] mention → PUA 哨兵(postProcessHtml 里替换为 <ac:link><ri:user>)。
 	//    必须先于规则 1/2 跑,否则内层 [[Name]] 会被通用 wikilink 规则消化掉。
@@ -611,6 +614,8 @@ function postProcessHtml(html: string, ctx: ConvertContext): string {
 		const re = new RegExp(`<${tag}\\b([^>]*?)(?<!/)>`, 'gi');
 		out = out.replace(re, `<${tag}$1 />`);
 	}
+	// `[!summary]+ 目录` 的整块手写链接列表 → Confluence 官方 TOC(H2-H3)。
+	out = replaceTocMarkersWithMacros(out);
 	// @[[Name]] mention 哨兵 → Confluence 用户链接(preprocess 阶段埋入,穿透 markdown-it 的 HTML 转义)
 	out = out.replace(/MENTION:([^]*)/g, (_full, username: string) => {
 		return `<ac:link><ri:user ri:username="${escapeAttr(username)}" /></ac:link>`;

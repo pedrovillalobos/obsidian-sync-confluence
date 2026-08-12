@@ -11,6 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### English
+
+#### Added
+
+- **Native Confluence table of contents.** An Obsidian `[!summary]+ 目录` callout containing same-page heading links stays readable as a hand-written TOC in Obsidian, but syncs as Confluence's official TOC macro limited to H2-H3. Other summary callouts and code examples remain unchanged.
+- **Multi-instance Confluence support.** A vault can configure up to 10 independent Cloud / Server / DC instances. Index-aligned targets are routed by safe longest-prefix matching, and one multi-target note can span instances.
+
+#### Changed
+
+- Hashes, attachment caches, and mention usernames now have per-instance slices. One-shot migration preserves both the old flat attachment cache and the page-ID-bucketed shape used by 0.3.8.
+- Existing targets use `confluence_url` as their authoritative route; `confluence_parent_url` participates only before a child page is created.
+
+#### Fixed
+
+- Partially unmatched targets are reported as failures, stale cross-instance parent URLs cannot make two engines claim one page, and wikilinks choose the referenced page belonging to the current instance.
+
+### 中文
+
+#### 新增
+
+- **Confluence 官方目录**:`[!summary]+ 目录` callout 内含同页标题链接时,Obsidian 中仍显示手写目录,同步到 Confluence 时则替换为限定 H2-H3 的官方 TOC 宏。普通 summary callout 和代码示例保持原样。
+- **Confluence 多实例支持**:单个 vault 最多配置 10 个独立 Cloud / Server / DC 实例。按下标对齐的 target 使用安全的最长前缀匹配路由,同一篇多 target 笔记可跨实例同步。
+
+#### 变更
+
+- 内容哈希、附件缓存和 mention username 改为按实例隔离。一次性迁移同时保留旧版平铺附件缓存与 0.3.8 的 Page ID 分桶形态。
+- 已有 target 以 `confluence_url` 为唯一权威路由;仅在新建子页面前使用 `confluence_parent_url`。
+
+#### 修复
+
+- 局部无法匹配的 target 会明确失败;过期的跨实例 parent URL 不会再让两个引擎同时认领一个页面;Wikilink 会选择当前实例对应的目标页面。
+
 ## [0.3.8] — 2026-07-29
 
 ### English

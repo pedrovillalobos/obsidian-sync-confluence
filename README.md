@@ -26,9 +26,11 @@
 ## 💡 Why Sync Confluence
 
 - **Frontmatter-driven binding** — drop a Confluence page URL into your note's frontmatter, that's the entire wiring.
+- **Multi-instance routing** — connect up to 10 Confluence instances in one vault; multi-target notes can span instances safely.
 - **Cloud + Server / Data Center** — Basic auth (email + API token) for Atlassian Cloud, Bearer (Personal Access Token) for Server 7.9+ / DC.
 - **Content-hash skip** — unchanged notes are not re-pushed; bandwidth and audit log stay clean.
 - **Local attachments auto-upload** — `![[image.png]]` embeds become Confluence attachments; regular images display at a configurable width (192px by default) without resizing the uploaded source.
+- **Native Confluence TOC** — keep a hand-written `[!summary]+ 目录` callout in Obsidian; on sync it becomes Confluence's official H2-H3 table-of-contents macro.
 - **Auto-create child pages** — set `confluence_parent_url` and the first sync creates the page, then writes the URL back.
 - **Mermaid / PlantUML pre-render** — diagrams are rendered to an image attachment before sync. Mermaid offers two engines: a kroki HTTP service (PNG, max compatibility) or the in-process Obsidian engine (SVG, pixel-identical to your preview).
 - **Many triggers** — ribbon icon, command palette, editor / file-tree right-click, scheduled timer.
@@ -102,6 +104,14 @@ Any of these works:
 
 The status-bar pill shows the last result: `☁ Idle` / `☁ Syncing` / `☁ Synced` / `☁ Failed`.
 
+## 🏢 Multi-instance Confluence
+
+Add another server with **Settings → Sync Confluence → Confluence authentication → Add Confluence instance**. Each instance has its own name, base URL, authentication, secret, and legacy-character compatibility switch.
+
+Targets are index-aligned across `confluence_url`, `confluence_parent_url`, and `confluence_page_id`. An existing target is routed by `confluence_url`; `confluence_parent_url` is used only while its URL is empty and the child page still needs to be created. Overlapping base URLs use the longest valid URL-prefix match. A multi-target note may therefore sync to several instances, while each engine updates only its own targets and cache slice.
+
+> Up to **10 instances** can be configured. A fully unmatched note is listed as `Unmatched`; an unmatched target inside an otherwise matched note is reported as a target failure instead of being silently skipped.
+
 ## 📝 Frontmatter cheatsheet
 
 **Existing page — bind by URL**
@@ -153,24 +163,26 @@ confluence_page_id: 12345, ""
 
 - `confluence_page_id` — resolved page ID.
 - `confluence_last_synced` — ISO timestamp of the last successful push.
-- `confluence_last_hash` — content hash; equal hash = sync is a no-op.
-- `confluence_attachments` — page ID → filename → `{hash, id}` cache, used to skip re-uploading unchanged attachments.
+- `confluence_last_hash` — instance ID → page ID → content hash; equal hash = sync is a no-op for that target.
+- `confluence_attachments` — instance ID → page ID → filename → `{hash, id}` cache, used to skip re-uploading unchanged attachments.
 
 ## 🔗 Links & mentions
 
-**Wikilinks.** `[[Other Note]]` / `[[Other Note|alias]]` (and standard `[text](note.md)` links) are resolved through Obsidian's metadata cache. If the target note has a `confluence_url` binding, the link becomes a hyperlink to that Confluence page; otherwise it degrades to plain text. Batch syncs pre-create placeholder pages for parent-only notes first, so cross-references inside the same batch resolve on the first sync.
+**Wikilinks.** `[[Other Note]]` / `[[Other Note|alias]]` (and standard `[text](note.md)` links) are resolved through Obsidian's metadata cache. If the target note has a `confluence_url` for the current instance, the link becomes a hyperlink to that instance's page; otherwise it degrades to plain text. Batch syncs pre-create placeholder pages for parent-only notes first, so cross-references inside the same batch resolve on the first sync.
 
 **Heading anchors.** Same-page `[[#Heading]]` / `[text](#heading)` and cross-page `[[Other Note#Heading]]` / `[text](note.md#heading)` links are converted to native Confluence heading anchors. Heading matching is case-sensitive, following Confluence behavior.
 
-**User mentions (Server / DC only).** Write `@[[John Doe]]` to mention a Confluence user. The plugin looks up the linked note (`John Doe.md`) and reads `confluence_username` from its frontmatter:
+**User mentions (Server / DC only).** Write `@[[John Doe]]` to mention a Confluence user. The plugin looks up the linked note (`John Doe.md`) and reads the current instance's username from its frontmatter:
 
 ```yaml
 ---
-confluence_username: john.d
+confluence_username:
+  default: john.d
+  work: j.doe
 ---
 ```
 
-If the field is present the mention becomes a real Confluence user link (notification + profile link); if the note or field is missing it degrades to plain `@John Doe` text. Mentions inside code blocks are left untouched. The plugin never queries the Confluence user API during sync — maintain the username once per person note and it works offline from then on. Cloud is not supported yet (Cloud storage format requires `ri:account-id`).
+The keys are the stable instance IDs shown on each settings card. If the current instance has an entry, the mention becomes a real Confluence user link; otherwise it degrades to plain `@John Doe`. Legacy scalar usernames are migrated to every configured instance once. Cloud is not supported yet (Cloud storage format requires `ri:account-id`).
 
 ## 🎨 Diagram rendering (optional)
 
@@ -227,11 +239,13 @@ Properties panel: when a note has a `confluence_url` property, the plugin adds t
 - **One-way sync only.** Edits made directly in Confluence are overwritten on the next sync.
 - **Desktop only.** Mobile Obsidian doesn't expose the Node `https` modules the plugin relies on for XSRF-safe uploads.
 - **No vendor macros.** Headings, lists, tables, fenced code, links, images and callouts are converted; vendor-specific macros aren't.
+- **TOC conversion is intentionally narrow.** Only a `[!summary]+ 目录` callout containing same-page heading links becomes the native Confluence TOC; manually curated ordering and inline grouping are replaced by Confluence's automatic H2-H3 hierarchy.
 
 ## 🧑‍💻 Development
 
 ```bash
 bun install
+bun test
 bun run dev      # watch mode, writes dist/main.js
 bun run build    # production build (typecheck + bundle)
 ```
@@ -262,6 +276,7 @@ The `release.yml` workflow builds and attaches the three required files to a Git
 ### 💡 为什么用 Sync Confluence
 
 - **Frontmatter 驱动绑定** —— 在笔记 frontmatter 里写一个 Confluence 页面 URL，就这一步。
+- **多实例安全路由** —— 一个 vault 最多连接 10 个 Confluence 实例，多 target 笔记可跨实例同步。
 - **Cloud + Server / DC** —— Cloud 用 Basic（邮箱 + API token），Server 7.9+ / DC 用 Bearer（个人访问令牌）。
 - **内容哈希去重** —— 没改的笔记不重复推送，省带宽也省审计噪声。
 - **本地附件自动上传** —— 笔记里 `![[image.png]]` 形式引用的本地图片自动上传为 Confluence 附件;普通图片默认显示宽度为 192px(可配置),上传原图不压缩。
@@ -338,6 +353,14 @@ confluence_url: https://xxx.atlassian.net/wiki/spaces/XXX/pages/12345/Title
 
 状态栏小图标会显示最近一次结果：`☁ 空闲` / `☁ 同步中` / `☁ 已同步` / `☁ 失败`。
 
+### 🏢 多实例 Confluence
+
+通过 **设置 → Sync Confluence → Confluence 认证 → 新增 Confluence 实例** 添加服务器。每个实例独立保存名称、Base URL、认证、密钥和旧版字符兼容开关。
+
+`confluence_url`、`confluence_parent_url`、`confluence_page_id` 按下标组成 target。已有页面只按 `confluence_url` 路由；仅当 URL 为空、需要新建子页面时才使用 `confluence_parent_url`。Base URL 重叠时采用合法的最长 URL 前缀匹配。因此一篇多 target 笔记可进入多个实例，但每个同步引擎只写自己的 target 和缓存切片。
+
+> 单个 vault 最多配置 **10 个实例**。整篇完全无法匹配时列为 `Unmatched`；已匹配笔记中的单个未知 target 会明确报失败，不会静默跳过。
+
 ### 📝 Frontmatter 速查
 
 **已有页面 —— 用 URL 直接绑**
@@ -389,24 +412,26 @@ confluence_page_id: 12345, ""
 
 - `confluence_page_id` —— 解析出的 Page ID。
 - `confluence_last_synced` —— 上次成功推送的 ISO 时间戳。
-- `confluence_last_hash` —— 内容哈希；哈希一致就跳过本次同步。
-- `confluence_attachments` —— Page ID → 文件名 → `{hash, id}` 附件缓存，用于跳过未变附件。
+- `confluence_last_hash` —— 实例 ID → Page ID → 内容哈希；相同 target 的哈希一致就跳过。
+- `confluence_attachments` —— 实例 ID → Page ID → 文件名 → `{hash, id}` 附件缓存，用于跳过未变附件。
 
 ### 🔗 链接与 mention
 
-**Wikilink。** `[[另一篇笔记]]` / `[[另一篇笔记|别名]]`（以及标准 `[文本](note.md)` 链接）会经 Obsidian metadata cache 解析：目标笔记已绑定 `confluence_url` → 替换为指向那个 Confluence 页面的超链接；未绑定 → 降级为纯文本。批量同步会先给"仅有 parent"的笔记预建占位页，同批笔记互相引用首次同步即可解析。
+**Wikilink。** `[[另一篇笔记]]` / `[[另一篇笔记|别名]]`（以及标准 `[文本](note.md)` 链接）会经 Obsidian metadata cache 解析：目标笔记在当前实例有 `confluence_url` → 替换为该实例页面的超链接；没有 → 降级为纯文本。批量同步会先给“仅有 parent”的笔记预建占位页，同批笔记互相引用首次同步即可解析。
 
 **标题锚点。** 同页 `[[#标题]]` / `[文本](#标题)` 和跨页 `[[另一篇笔记#标题]]` / `[文本](note.md#标题)` 会转换为 Confluence 原生标题锚点。标题匹配遵循 Confluence 规则，区分大小写。
 
-**用户 mention（仅 Server / DC）。** 写 `@[[张三]]` 即可 mention Confluence 用户。插件查找被链接的笔记（`张三.md`），读其 frontmatter 的 `confluence_username`：
+**用户 mention（仅 Server / DC）。** 写 `@[[张三]]` 即可 mention Confluence 用户。插件查找被链接的笔记（`张三.md`），按当前实例读取 `confluence_username`：
 
 ```yaml
 ---
-confluence_username: zhangsan
+confluence_username:
+  default: zhangsan
+  work: zhang.san
 ---
 ```
 
-字段存在 → 变成真实的 Confluence 用户链接（会通知对方、可点进个人页）；笔记或字段缺失 → 降级为纯文本 `@张三`。代码块里的 mention 原样保留。插件同步过程**不会**调 Confluence 用户搜索 API——每人维护一次 username 后离线可用。Cloud 暂不支持（Cloud storage 格式要求 `ri:account-id`）。
+键是每张设置卡里显示的稳定实例 ID。当前实例有值时会生成真实 Confluence 用户链接；缺失时只在该实例降级为纯文本 `@张三`。旧版单值 username 会一次性迁移到全部已配置实例。Cloud 暂不支持（Cloud storage 格式要求 `ri:account-id`）。
 
 ### 🎨 图表渲染（可选）
 
@@ -463,11 +488,13 @@ confluence_username: zhangsan
 - **仅单向同步**。在 Confluence 端直接改的内容会在下次同步时被覆盖。
 - **仅桌面端**。Obsidian 移动端没暴露插件做 XSRF-safe 上传所需的 Node `https` 模块。
 - **不覆盖第三方 Confluence 宏**。标题、列表、表格、围栏代码、链接、图片、callout 都做了转换；vendor 自定义宏不处理。
+- **目录转换范围刻意收窄**。只有正文含同页标题链接的 `[!summary]+ 目录` callout 才会转成 Confluence 官方目录；手工排序和同一行分组会由 Confluence 自动生成的 H2-H3 层级取代。
 
 ### 🧑‍💻 开发
 
 ```bash
 bun install
+bun test
 bun run dev      # watch 模式,写 dist/main.js
 bun run build    # 生产构建(typecheck + 打包)
 ```
