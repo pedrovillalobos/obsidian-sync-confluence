@@ -1,5 +1,5 @@
 import { type App, type TFile, TFile as TFileCtor } from 'obsidian';
-import { ConfluenceApi, ConfluenceApiError } from '../confluence/api';
+import { ConfluenceApi, ConfluenceApiError, formatApiErrorForLog } from '../confluence/api';
 import { parsePageIdFromUrl } from '../confluence/urlParser';
 import {
 	MarkdownConverter,
@@ -364,9 +364,9 @@ export class SyncEngine {
 				perTarget,
 			};
 		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
+			const msg = formatApiErrorForLog(e);
 			this.deps.logger.error(`同步失败: ${path}`, msg);
-			return { path, skipped: false, success: false, error: msg };
+			return { path, skipped: false, success: false, error: e instanceof Error ? e.message : String(e) };
 		}
 	}
 
