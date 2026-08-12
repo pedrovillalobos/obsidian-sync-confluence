@@ -32,7 +32,7 @@
 - **Local attachments auto-upload** — `![[image.png]]` embeds become Confluence attachments; regular images display at a configurable width (192px by default) without resizing the uploaded source.
 - **Native Confluence TOC** — keep a hand-written `[!summary]+ 目录` callout in Obsidian; on sync it becomes Confluence's official H2-H3 table-of-contents macro.
 - **Auto-create child pages** — set `confluence_parent_url` and the first sync creates the page, then writes the URL back.
-- **Mermaid / PlantUML pre-render** — diagrams are rendered to an image attachment before sync. Mermaid offers two engines: a kroki HTTP service (PNG, max compatibility) or the in-process Obsidian engine (SVG, pixel-identical to your preview).
+- **Mermaid / PlantUML pre-render** — diagrams are rendered to an image attachment before sync. Mermaid defaults to the in-process Obsidian engine (SVG, pixel-identical to your preview, no network). A kroki HTTP service (PNG, max compatibility) is optional.
 - **Many triggers** — ribbon icon, command palette, editor / file-tree right-click, scheduled timer.
 - **Bilingual UI** — automatically follows Obsidian's language (English / 简体中文).
 
@@ -197,10 +197,10 @@ Pick one in **Settings → Diagrams → Renderer**:
 
 | Engine | Output | Best for |
 |---|---|---|
-| **Kroki remote service** (default) | PNG via `https://kroki.io/mermaid/png` (or self-hosted) | Maximum compatibility — works on every Confluence version, full CJK / emoji font coverage. Trade-off: time-axis diagrams (gantt / timeline) render at a cramped width and date labels overlap. |
-| **Obsidian built-in engine** | SVG rendered locally with Obsidian's mermaid runtime | Pixel-identical to your editor preview, no network needed, time-axis diagrams scale to content width. Trade-off: SVG output — older Confluence Server (≤5.x) may not render it inline; fonts follow your Obsidian theme. |
+| **Obsidian built-in engine** (default) | SVG rendered locally with Obsidian's mermaid runtime | Pixel-identical to your editor preview, no network needed, time-axis diagrams scale to content width. Trade-off: SVG output — older Confluence Server (≤5.x) may not render it inline; fonts follow your Obsidian theme. |
+| **Kroki remote service** | PNG via `https://kroki.io/mermaid/png` (or self-hosted) | Maximum compatibility — works on every Confluence version, full CJK / emoji font coverage. Trade-off: mermaid **source is sent to the configured server**. The public kroki.io instance is a third party; use a self-hosted Kroki for confidential diagrams. Time-axis diagrams (gantt / timeline) also render at a cramped width and date labels overlap. |
 
-For corporate networks using kroki, point **Kroki service URL** at a self-hosted [kroki](https://kroki.io) instance (a single `docker run` will do).
+For corporate networks using kroki, point **Kroki service URL** at a self-hosted [kroki](https://kroki.io) instance (a single `docker run` will do). The same privacy warning applies to PlantUML: enabling it sends source to the configured PlantUML server (public `plantuml.com` by default).
 
 ## ⌨️ Commands & menus
 
@@ -226,7 +226,7 @@ Properties panel: when a note has a `confluence_url` property, the plugin adds t
 
 **`XSRF` rejection on Server** — The plugin already routes around this by using Node `https` for POST + JSON / multipart uploads. If you still hit it, your reverse proxy may be stripping headers; check `X-Atlassian-Token: no-check`.
 
-**Mermaid block shows source instead of image** — turn on **Render Mermaid diagrams** in settings. The default engine (kroki) needs network access to `kroki.io`; on a corporate network either self-host kroki or switch the engine to **Obsidian built-in (SVG)**, which renders locally.
+**Mermaid block shows source instead of image** — turn on **Render Mermaid diagrams** in settings. The default engine (Obsidian built-in) renders locally. If you switched to kroki, it needs network access to the configured server; on a corporate network either self-host kroki or switch back to **Obsidian built-in (SVG)**.
 
 **Gantt / timeline dates overlap on Confluence** — kroki renders these at a fixed narrow width so the date axis labels collide. Switch the engine to **Obsidian built-in (SVG)** to let the chart scale to content width.
 
@@ -281,7 +281,7 @@ The `release.yml` workflow builds and attaches the three required files to a Git
 - **内容哈希去重** —— 没改的笔记不重复推送，省带宽也省审计噪声。
 - **本地附件自动上传** —— 笔记里 `![[image.png]]` 形式引用的本地图片自动上传为 Confluence 附件;普通图片默认显示宽度为 192px(可配置),上传原图不压缩。
 - **自动建子页面** —— 设 `confluence_parent_url`，首次同步时插件自动建子页面并把新 URL 回写到 `confluence_url`。
-- **Mermaid / PlantUML 预渲染** —— 同步前渲染成图片附件，Confluence 端不装宏也能看图。Mermaid 支持两种引擎：kroki 远端服务（PNG，兼容性最好）或 Obsidian 内置引擎（SVG，跟笔记预览像素级一致）。
+- **Mermaid / PlantUML 预渲染** —— 同步前渲染成图片附件，Confluence 端不装宏也能看图。Mermaid 默认走 Obsidian 内置引擎（SVG，跟笔记预览像素级一致、不走网络）；可选 kroki 远端服务（PNG，兼容性最好）。
 - **多种触发方式** —— Ribbon、命令面板、编辑器 / 文件树右键、定时器。
 - **中英双语 UI** —— 跟随 Obsidian 语言自动切换。
 
@@ -446,10 +446,10 @@ confluence_username:
 
 | 引擎 | 输出 | 适用 |
 |---|---|---|
-| **Kroki 远端服务**（默认） | PNG，走 `https://kroki.io/mermaid/png`（或自建实例） | 兼容性最好——任何 Confluence 版本都能 inline 渲染，中文/emoji 字体齐全。代价：时间轴类图表（gantt / timeline）会被压缩到固定窄宽度，日期标签挤在一起。 |
-| **Obsidian 内置引擎** | SVG，本地用 Obsidian 自带的 mermaid 渲染 | 跟编辑器预览像素级一致、无网络依赖、时间轴图表按内容宽度自然撑开。代价：产物是 SVG，老版本 Confluence Server（≤5.x）可能不 inline 显示；字体跟随你当前主题。 |
+| **Obsidian 内置引擎**（默认） | SVG，本地用 Obsidian 自带的 mermaid 渲染 | 跟编辑器预览像素级一致、无网络依赖、时间轴图表按内容宽度自然撑开。代价：产物是 SVG，老版本 Confluence Server（≤5.x）可能不 inline 显示；字体跟随你当前主题。 |
+| **Kroki 远端服务** | PNG，走 `https://kroki.io/mermaid/png`（或自建实例） | 兼容性最好——任何 Confluence 版本都能 inline 渲染，中文/emoji 字体齐全。代价：mermaid **源码会发送到配置的服务器**。公共 kroki.io 是第三方，机密图表请改用自建 Kroki。时间轴类图表（gantt / timeline）还会被压缩到固定窄宽度，日期标签挤在一起。 |
 
-走 kroki 的企业内网用户，把 **Kroki 服务 URL** 指向自建 [kroki](https://kroki.io) 实例（一条 `docker run` 即可）。
+走 kroki 的企业内网用户，把 **Kroki 服务 URL** 指向自建 [kroki](https://kroki.io) 实例（一条 `docker run` 即可）。PlantUML 同样：开启后源码会发到配置的 PlantUML 服务器（默认公共 `plantuml.com`）。
 
 ### ⌨️ 命令与菜单
 
@@ -475,7 +475,7 @@ confluence_username:
 
 **Server 上 `XSRF` 拒绝** —— 插件已经走 Node `https` 模块绕过 `requestUrl` 的 XSRF 限制了。如果还报，多半是你的反代剥了 header，检查一下 `X-Atlassian-Token: no-check` 透传。
 
-**Mermaid 代码块没渲成图** —— 在设置里把 **渲染 Mermaid 图表** 打开。默认引擎（kroki）需要联网访问 `kroki.io`；企业内网要么自建 kroki，要么把引擎切到 **Obsidian 内置引擎（SVG）**，本地渲染、不走网络。
+**Mermaid 代码块没渲成图** —— 在设置里把 **渲染 Mermaid 图表** 打开。默认引擎（Obsidian 内置）本地渲染、不走网络。如果切到了 kroki，需要能访问配置的服务器；企业内网要么自建 kroki，要么把引擎切回 **Obsidian 内置引擎（SVG）**。
 
 **Confluence 上 Gantt / timeline 的日期挤在一起** —— kroki 渲染这类时间轴图表用的画布太窄，日期标签互相重叠。把引擎切到 **Obsidian 内置引擎（SVG）**，让图表按内容宽度自然撑开。
 

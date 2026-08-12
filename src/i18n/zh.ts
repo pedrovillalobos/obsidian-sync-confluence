@@ -196,6 +196,7 @@ export const zh: Messages = {
 			rendererObsidian: 'Obsidian 内置引擎(SVG)',
 			krokiPros: '✓ 优:字体齐全(含中文 emoji)、对老版 Confluence 兼容性最好、跨设备渲染一致。',
 			krokiCons: '✗ 劣:依赖网络(企业内网需自建 kroki)、时间轴类图表(gantt / timeline)宽度被压窄、日期会挤在一起。',
+			krokiPrivacy: '隐私:mermaid 源码会发送到上方配置的 Kroki 服务器。公共 kroki.io 是第三方服务,机密图表请改用自建 Kroki。',
 			obsidianPros: '✓ 优:跟编辑器预览像素级一致、无网络依赖、mermaid 版本跟 Obsidian 走、时间轴宽度由内容撑开不挤。',
 			obsidianCons: '✗ 劣:产物是 SVG,Confluence Server 5.x 及以下可能不 inline 显示;字体跟随主题,导出图引用本机字体,远端用户看到时会回退到系统默认。',
 			urlName: 'Kroki 服务 URL',
@@ -206,6 +207,7 @@ export const zh: Messages = {
 			toggleDesc: '通过 PlantUML Server 渲染(默认走 plantuml.com 公共实例,有速率限制)',
 			urlName: 'PlantUML server URL',
 			urlDesc: '不含尾部 /,例如 https://www.plantuml.com/plantuml 或自建实例',
+			privacyWarning: '隐私:PlantUML 源码会发送到该服务器。公共 plantuml.com 是第三方服务,机密图表请改用自建实例。',
 		},
 		showStatusBar: {
 			name: '显示状态栏',
