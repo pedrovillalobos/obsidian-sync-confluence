@@ -29,6 +29,12 @@ export interface SyncConfluenceSettings {
 	showStatusBar: boolean;
 	showNotice: boolean;
 	frontmatterKey: string;
+	/**
+	 * When true, refuse to overwrite a Confluence page whose `version.number`
+	 * is newer than the last version this plugin pushed. Default false keeps
+	 * the historical overwrite-on-sync behaviour.
+	 */
+	checkRemoteConflicts: boolean;
 
 	// ========== 附件 ==========
 	uploadAttachments: boolean;
@@ -62,6 +68,7 @@ export const DEFAULT_SETTINGS: SyncConfluenceSettings = {
 	showStatusBar: true,
 	showNotice: true,
 	frontmatterKey: 'confluence_url',
+	checkRemoteConflicts: false,
 
 	uploadAttachments: true,
 	maxAttachmentSizeMB: 10,
@@ -136,6 +143,14 @@ export class SyncConfluenceSettingTab extends PluginSettingTab {
 				.setDesc(t('settings.syncOnStartup.desc'))
 				.addToggle((tx) => tx.setValue(s.syncOnStartup).onChange(async (v) => {
 					s.syncOnStartup = v;
+					await this.plugin.saveSettings();
+				}));
+
+			new Setting(el)
+				.setName(t('settings.checkRemoteConflicts.name'))
+				.setDesc(t('settings.checkRemoteConflicts.desc'))
+				.addToggle((tx) => tx.setValue(s.checkRemoteConflicts).onChange(async (v) => {
+					s.checkRemoteConflicts = v;
 					await this.plugin.saveSettings();
 				}));
 
