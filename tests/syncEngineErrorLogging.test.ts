@@ -204,7 +204,33 @@ describe('per-target API failures: every target fails', () => {
 		expect(warn?.details).toContain(`content/${FAILING_PAGE_ID} → 500`);
 		expect(warn?.details).toContain(`content/${OK_PAGE_ID} → 500`);
 		expect(warn?.details?.split(RESPONSE_BODY).length - 1).toBe(2);
+		// Each record is message + body, so the two must stay blank-line
+		// separated instead of running together into one four-line blob.
+		expect(warn?.details).toContain(
+			`${RESPONSE_BODY}\n\nConfluence GET /rest/api/content/${OK_PAGE_ID} → 500`,
+		);
 		expect(result?.error).not.toContain(RESPONSE_BODY);
+	});
+});
+
+describe('single-target note whose only target fails', () => {
+	test('still logs the body and returns only the short message', async () => {
+		// The common real-world shape: one confluence_url, no successful
+		// sibling target. successful.length === 0 skips the whole writeback
+		// block, but the partial-failure warn is still the path taken.
+		const { engine, file, logger, api } = buildEngine(
+			new Map<string, unknown>([[FAILING_PAGE_ID, apiError(FAILING_PAGE_ID)]]),
+			[FAILING_PAGE_ID],
+		);
+
+		const result = await engine.syncOne(file);
+
+		expect(api.getPageCalls).toEqual([FAILING_PAGE_ID]);
+		const warn = logger.find('warn', '部分目标同步失败');
+		expect(warn?.details).toContain(RESPONSE_BODY);
+		expect(logger.entries.some((e) => e.level === 'error')).toBe(false);
+		expect(result?.error).toBe(SHORT_MESSAGE);
+		expect(result?.perTarget?.[0]?.error).not.toContain(RESPONSE_BODY);
 	});
 });
 
