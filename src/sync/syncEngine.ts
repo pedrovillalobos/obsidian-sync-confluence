@@ -64,19 +64,38 @@ interface TargetSyncFailureResult {
 	pageId: string;
 	url: string;
 	success: false;
+	/** Short, user-facing message. Goes into FileSyncResult and Notices. */
 	error: string;
+	/**
+	 * Same message plus the HTTP response body when the cause was a
+	 * ConfluenceApiError. Logger-only — never assigned to FileSyncResult.
+	 */
+	logDetail: string;
 }
 
+/**
+ * Per-target rejection carried through Promise.allSettled.
+ *
+ * `message` stays short so the Notice built from FileSyncResult.error keeps
+ * showing only method / path / status. The original error is kept on `cause`,
+ * and `logDetail` holds the formatted form (message + response body) so the
+ * per-target failure log is as detailed as the whole-file one.
+ */
 class TargetSyncFailure extends Error {
+	readonly logDetail: string;
+
 	constructor(
-		message: string,
+		// `Error.cause` is ES2022 and this project targets ES2018, so the
+		// original error is carried in an explicit property instead.
+		public readonly cause: unknown,
 		public index: number,
 		public target: SyncTarget,
 		public pageId: string,
 		public url: string,
 	) {
-		super(message);
+		super(cause instanceof Error ? cause.message : String(cause));
 		this.name = 'TargetSyncFailure';
+		this.logDetail = formatApiErrorForLog(cause);
 	}
 }
 
@@ -264,6 +283,11 @@ export class SyncEngine {
 			));
 
 			const successful: TargetSyncSuccess[] = [];
+			// Logger-only side channel, keyed by target index: the detailed form
+			// of each per-target failure (message + HTTP response body). It is
+			// deliberately NOT part of perTarget / FileSyncResult, so response
+			// bodies cannot leak into a Notice.
+			const failureLogDetails = new Map<number, string>();
 			settled.forEach((result, index) => {
 				const originalIndex = filterIndex[index]!;
 				if (result.status === 'fulfilled') {
@@ -286,6 +310,7 @@ export class SyncEngine {
 					success: false,
 					error: failed.error,
 				};
+				failureLogDetails.set(originalIndex, failed.logDetail);
 			});
 
 			// failures = targets that failed inside THIS engine. Foreign targets
@@ -365,7 +390,16 @@ export class SyncEngine {
 			if (failures.length === 0) {
 				this.deps.logger.info(`已同步: ${path}`, `目标 ${successful.length},附件 上传 ${uploadedAttachments} / 复用 ${skippedAttachments} / 失败 ${failedAttachments}`);
 			} else {
-				this.deps.logger.warn(`部分目标同步失败: ${path}`, failures.map((target) => target.error ?? '').join('\n'));
+				// Log the detailed form (falls back to the short message for
+				// failures with no cause, e.g. unmatched targets). The Notice
+				// path below still uses target.error only.
+				const failureLog = perTarget
+					.map((target, index) => (target.success === false && !target.foreign)
+						? (failureLogDetails.get(index) ?? target.error ?? '')
+						: null)
+					.filter((line): line is string => line !== null)
+					.join('\n');
+				this.deps.logger.warn(`部分目标同步失败: ${path}`, failureLog);
 			}
 			return {
 				path,
@@ -687,8 +721,9 @@ export class SyncEngine {
 				remoteVersion: writtenVersion,
 			};
 		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			throw new TargetSyncFailure(msg, index, target, pageId, url);
+			// Pass the original error, not just its message: TargetSyncFailure
+			// keeps the ConfluenceApiError response body for the logger.
+			throw new TargetSyncFailure(e, index, target, pageId, url);
 		}
 	}
 
@@ -733,6 +768,7 @@ export class SyncEngine {
 				url: reason.url,
 				success: false,
 				error: reason.message,
+				logDetail: reason.logDetail,
 			};
 		}
 		return {
@@ -742,6 +778,7 @@ export class SyncEngine {
 			url: target.url,
 			success: false,
 			error: reason instanceof Error ? reason.message : String(reason),
+			logDetail: formatApiErrorForLog(reason),
 		};
 	}
 
