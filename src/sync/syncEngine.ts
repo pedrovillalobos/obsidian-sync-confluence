@@ -379,13 +379,15 @@ export class SyncEngine {
 			} else {
 				// Log the detailed form (falls back to the short message for
 				// failures with no cause, e.g. unmatched targets). The Notice
-				// path below still uses target.error only.
+				// path below still uses target.error only. Records are blank-line
+				// separated because a detailed one spans two lines (message then
+				// response body), so a plain \n join would run them together.
 				const failureLog = perTarget
 					.map((target, index) => (target.success === false && !target.foreign)
 						? (failureLogDetails.get(index) ?? target.error ?? '')
 						: null)
 					.filter((line): line is string => line !== null)
-					.join('\n');
+					.join('\n\n');
 				this.deps.logger.warn(`部分目标同步失败: ${path}`, failureLog);
 			}
 			return {
