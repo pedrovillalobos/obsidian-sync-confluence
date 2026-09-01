@@ -1,30 +1,8 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
-
-// `src/utils/hash.ts` reads `window.crypto.subtle`, and `src/i18n` probes
-// `window.localStorage`. Bun has neither, so point `window` at globalThis
-// before the modules under test are imported.
-(globalThis as unknown as { window: unknown }).window = globalThis;
-
-class FakeTFile {
-	constructor(public path: string, public basename: string, public name: string) {}
-}
-
-mock.module('obsidian', () => ({
-	App: class {},
-	Component: class {},
-	MarkdownRenderer: class {},
-	Modal: class {},
-	Notice: class {},
-	Plugin: class {},
-	PluginSettingTab: class {},
-	Setting: class {},
-	TFile: FakeTFile,
-	TFolder: class {},
-	normalizePath: (p: string) => p,
-	requestUrl: () => {
-		throw new Error('requestUrl must not be called by syncEngine tests');
-	},
-}));
+import { beforeEach, describe, expect, test } from 'bun:test';
+// `obsidian` is stubbed process-wide by bunfig.toml `[test] preload`; see
+// tests/setup/obsidian-stub.ts for why it cannot be stubbed from here. TFile
+// comes from the same stub so the engine sees one class identity.
+import { TFile as StubTFile } from './setup/obsidian-stub';
 
 const { SyncEngine } = await import('../src/sync/syncEngine');
 const { ConfluenceApiError } = await import('../src/confluence/api');
@@ -90,7 +68,7 @@ function pageUrl(pageId: string): string {
 }
 
 function buildEngine(failures: Map<string, unknown>, pageIds: string[]) {
-	const file = new FakeTFile('notes/demo.md', 'demo', 'demo.md');
+	const file = new StubTFile('notes/demo.md', 'demo', 'demo.md');
 	const frontmatter: Record<string, unknown> = {
 		confluence_url: pageIds.map(pageUrl),
 		confluence_page_id: [...pageIds],
