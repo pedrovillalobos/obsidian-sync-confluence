@@ -205,6 +205,7 @@ export const en = {
 			rendererObsidian: 'Obsidian built-in engine (SVG)',
 			krokiPros: '✓ Pros: Full font coverage (CJK + emoji), best compatibility with older Confluence Server, identical render across devices.',
 			krokiCons: '✗ Cons: Network-dependent (self-host needed on intranet); time-axis diagrams (gantt / timeline) render at a cramped width so date labels overlap.',
+			krokiPrivacy: 'Privacy: mermaid source is sent to the configured Kroki server. The public kroki.io instance is a third party — use a self-hosted Kroki for confidential diagrams.',
 			obsidianPros: '✓ Pros: Pixel-identical to the Obsidian preview, no network needed, mermaid version follows Obsidian, time-axis diagrams scale to content width.',
 			obsidianCons: '✗ Cons: Output is SVG — Confluence Server 5.x and older may not render it inline; fonts follow your current theme, so remote viewers fall back to system defaults.',
 			urlName: 'Kroki service URL',
@@ -215,6 +216,7 @@ export const en = {
 			toggleDesc: 'Renders via a PlantUML server (defaults to the public plantuml.com instance, which is rate-limited)',
 			urlName: 'PlantUML server URL',
 			urlDesc: 'No trailing slash, e.g. https://www.plantuml.com/plantuml or a self-hosted instance',
+			privacyWarning: 'Privacy: PlantUML source is sent to this server. The public plantuml.com instance is a third party — use a self-hosted server for confidential diagrams.',
 		},
 		showStatusBar: {
 			name: 'Show status bar',

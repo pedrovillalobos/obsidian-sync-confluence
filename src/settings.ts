@@ -68,7 +68,7 @@ export const DEFAULT_SETTINGS: SyncConfluenceSettings = {
 	defaultImageWidthPx: 192,
 
 	renderMermaidToPng: true,
-	mermaidRenderer: 'kroki',
+	mermaidRenderer: 'obsidian',
 	mermaidRenderUrl: 'https://kroki.io/mermaid/png',
 	renderPlantUmlToPng: false,
 	plantUmlServerUrl: 'https://www.plantuml.com/plantuml',
@@ -270,6 +270,7 @@ export class SyncConfluenceSettingTab extends PluginSettingTab {
 				if (s.mermaidRenderer === 'kroki') {
 					rendererHint.createEl('p', { text: t('settings.mermaid.krokiPros') });
 					rendererHint.createEl('p', { text: t('settings.mermaid.krokiCons') });
+					rendererHint.createEl('p', { text: t('settings.mermaid.krokiPrivacy'), cls: 'sync-confluence-privacy-warning' });
 				} else {
 					rendererHint.createEl('p', { text: t('settings.mermaid.obsidianPros') });
 					rendererHint.createEl('p', { text: t('settings.mermaid.obsidianCons') });
@@ -310,6 +311,11 @@ export class SyncConfluenceSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 						void this.plugin.rebuildSyncEngine();
 					}));
+
+			el.createEl('p', {
+				text: t('settings.plantuml.privacyWarning'),
+				cls: 'sync-confluence-privacy-warning setting-item-description',
+			});
 		});
 
 		// ===== UI 行为 =====
